@@ -98,8 +98,8 @@ REST_FRAMEWORK = {
 
 # --- LLM (/api/ask) -------------------------------------------------------------
 # Empty or unset: /api/ask refuses with LLM_UNAVAILABLE; everything else works.
-ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
-ASK_MODEL = env("ASK_MODEL", default="claude-sonnet-5-5")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+ASK_MODEL = env("ASK_MODEL", default="gemini-3.1-flash-lite")
 
 # --- i18n / time ------------------------------------------------------------
 LANGUAGE_CODE = "en-us"

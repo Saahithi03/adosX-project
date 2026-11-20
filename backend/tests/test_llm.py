@@ -1,4 +1,4 @@
-"""ask.llm with the Anthropic client mocked: request shape and response handling.
+"""ask.llm with the Gemini client mocked: request shape and response handling.
 
 No network. The live tests (test_ask_live.py) cover the real model.
 """
@@ -6,8 +6,8 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import anthropic
 import pytest
+from google.genai import errors as genai_errors
 
 from ask import llm
 from ask.tools import build_tools
@@ -19,57 +19,58 @@ ORG_A_LOCATIONS = [
 ]
 
 
-def response(*blocks, stop_reason="tool_use"):
-    return SimpleNamespace(stop_reason=stop_reason, content=list(blocks))
+def response(*calls):
+    """A stand-in for GenerateContentResponse: only .function_calls is read."""
+    return SimpleNamespace(function_calls=list(calls) or None)
 
 
-def tool_use(name, input):
-    return SimpleNamespace(type="tool_use", name=name, input=input)
-
-
-def text(t):
-    return SimpleNamespace(type="text", text=t)
+def call(name, args):
+    return SimpleNamespace(name=name, args=args)
 
 
 @pytest.fixture
 def fake_client(mocker, settings):
-    settings.ANTHROPIC_API_KEY = "test-key-not-real"
+    settings.GEMINI_API_KEY = "test-key-not-real"
     client = MagicMock()
-    client.beta.messages.create.return_value = response(tool_use("query_exceptions", {"metric": "count"}))
-    mocker.patch("ask.llm.anthropic.Anthropic", return_value=client)
+    client.models.generate_content.return_value = response(call("query_exceptions", {"metric": "count"}))
+    mocker.patch("ask.llm.genai.Client", return_value=client)
     return client
+
+
+def sent(fake_client):
+    return fake_client.models.generate_content.call_args.kwargs
 
 
 # --- request shape -----------------------------------------------------------------
 
-def test_request_shape(fake_client):
+def test_request_shape(fake_client, settings):
     llm.parse_intent("How many at Location 103?", ORG_A_LOCATIONS)
-    kwargs = fake_client.beta.messages.create.call_args.kwargs
+    kwargs = sent(fake_client)
+    config = kwargs["config"]
 
-    assert kwargs["model"] == "claude-sonnet-5-5"
-    # Forced tool use and temperature are rejected by this model (DECISIONS.md).
-    assert kwargs["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True}
-    assert "temperature" not in kwargs
-    assert all(t["strict"] is True for t in kwargs["tools"])
-    assert {t["name"] for t in kwargs["tools"]} == {"query_exceptions", "cannot_answer"}
+    assert kwargs["model"] == settings.ASK_MODEL
+    # The brief's settings: a function call is mandatory, and temperature is 0.
+    fcc = config.tool_config.function_calling_config
+    assert fcc.mode == "ANY"
+    assert set(fcc.allowed_function_names) == {"query_exceptions", "cannot_answer"}
+    assert config.temperature == 0
     # The question is wrapped as data, and no exception rows are sent.
-    content = kwargs["messages"][0]["content"]
-    assert "<question>\nHow many at Location 103?\n</question>" in content
-    assert "REC-" not in json.dumps(kwargs)
+    assert "<question>\nHow many at Location 103?\n</question>" in kwargs["contents"]
+    assert "REC-" not in kwargs["contents"] and "REC-" not in config.system_instruction
 
 
 def test_only_the_users_locations_are_offered(fake_client):
     llm.parse_intent("q", ORG_A_LOCATIONS)
-    kwargs = fake_client.beta.messages.create.call_args.kwargs
-    query_tool = next(t for t in kwargs["tools"] if t["name"] == "query_exceptions")
-    enum = query_tool["input_schema"]["properties"]["location_ids"]["items"]["enum"]
+    declarations = sent(fake_client)["config"].tools[0].function_declarations
+    query = next(d for d in declarations if d.name == "query_exceptions")
+    enum = query.parameters_json_schema["properties"]["location_ids"]["items"]["enum"]
     assert enum == ["LOC-101", "LOC-102", "LOC-103"]
-    assert "LOC-201" not in json.dumps(kwargs) and "LOC-202" not in json.dumps(kwargs)
+    assert "LOC-201" not in json.dumps(query.parameters_json_schema)
 
 
 def test_missing_key_is_unavailable_without_calling(mocker, settings):
-    settings.ANTHROPIC_API_KEY = ""
-    constructor = mocker.patch("ask.llm.anthropic.Anthropic")
+    settings.GEMINI_API_KEY = ""
+    constructor = mocker.patch("ask.llm.genai.Client")
     with pytest.raises(llm.LLMUnavailable):
         llm.parse_intent("q", ORG_A_LOCATIONS)
     constructor.assert_not_called()
@@ -78,58 +79,54 @@ def test_missing_key_is_unavailable_without_calling(mocker, settings):
 @pytest.mark.parametrize(
     "error",
     [
-        anthropic.APIConnectionError(request=MagicMock()),
-        anthropic.APITimeoutError(request=MagicMock()),
+        genai_errors.ClientError(400, {"error": {"message": "API key not valid", "status": "INVALID_ARGUMENT"}}),
+        genai_errors.ClientError(429, {"error": {"message": "quota", "status": "RESOURCE_EXHAUSTED"}}),
+        genai_errors.ServerError(503, {"error": {"message": "overloaded", "status": "UNAVAILABLE"}}),
+        TimeoutError("timed out"),
+        ConnectionError("network down"),
     ],
-    ids=["connection", "timeout"],
+    ids=["bad-key", "quota", "server", "timeout", "network"],
 )
 def test_api_failures_become_unavailable(fake_client, error):
-    fake_client.beta.messages.create.side_effect = error
-    with pytest.raises(llm.LLMUnavailable):
-        llm.parse_intent("q", ORG_A_LOCATIONS)
-
-
-@pytest.mark.parametrize("status, cls", [(401, anthropic.AuthenticationError), (429, anthropic.RateLimitError),
-                                         (500, anthropic.InternalServerError)])
-def test_http_errors_become_unavailable(fake_client, status, cls):
-    resp = MagicMock(status_code=status, headers={})
-    fake_client.beta.messages.create.side_effect = cls("boom", response=resp, body=None)
+    fake_client.models.generate_content.side_effect = error
     with pytest.raises(llm.LLMUnavailable):
         llm.parse_intent("q", ORG_A_LOCATIONS)
 
 
 # --- response handling ---------------------------------------------------------------
 
-def test_tool_call_is_returned_as_is():
-    call = llm.to_tool_call(response(tool_use("query_exceptions", {"metric": "list", "location_ids": ["LOC-103"]})))
-    assert call == llm.ToolCall("query_exceptions", {"metric": "list", "location_ids": ["LOC-103"]})
+def test_function_call_is_returned_as_is():
+    tool_call = llm.to_tool_call(response(call("query_exceptions", {"metric": "list", "location_ids": ["LOC-103"]})))
+    assert tool_call == llm.ToolCall("query_exceptions", {"metric": "list", "location_ids": ["LOC-103"]})
 
 
-def test_text_before_the_tool_call_is_ignored():
-    call = llm.to_tool_call(response(text("Sure! There are 500."), tool_use("cannot_answer", {"reason_type": "AMBIGUOUS"})))
-    assert call.name == "cannot_answer" and "500" not in json.dumps(call.input)
+def test_only_the_first_call_is_used():
+    tool_call = llm.to_tool_call(
+        response(call("cannot_answer", {"reason_type": "AMBIGUOUS"}), call("query_exceptions", {"metric": "count"}))
+    )
+    assert tool_call.name == "cannot_answer"
 
 
-def test_text_only_reply_is_refused_and_never_passed_through():
-    call = llm.to_tool_call(response(text("The answer is 500."), stop_reason="end_turn"))
-    assert call == llm.ToolCall("cannot_answer", {"reason_type": "OUT_OF_SCOPE"})
+def test_no_function_call_is_refused():
+    # e.g. a safety block: no candidates, so no function call and no text used.
+    assert llm.to_tool_call(response()) == llm.ToolCall("cannot_answer", {"reason_type": "OUT_OF_SCOPE"})
 
 
-def test_safety_refusal_is_out_of_scope():
-    call = llm.to_tool_call(response(stop_reason="refusal"))
-    assert call == llm.ToolCall("cannot_answer", {"reason_type": "OUT_OF_SCOPE"})
+def test_call_with_no_args_becomes_empty_dict():
+    assert llm.to_tool_call(response(call("query_exceptions", None))) == llm.ToolCall("query_exceptions", {})
 
 
-# --- schemas stay inside what strict mode supports -----------------------------------------
+# --- schemas -------------------------------------------------------------------------
 
-def test_schemas_avoid_unsupported_strict_constraints():
-    dumped = json.dumps(build_tools(ORG_A_LOCATIONS))
-    for unsupported in ["maxItems", "minItems", "maxLength", "minLength", "minimum", "maximum"]:
-        assert unsupported not in dumped
+def test_schemas_are_closed_objects():
     for tool in build_tools(ORG_A_LOCATIONS):
-        assert tool["input_schema"]["additionalProperties"] is False
+        assert tool["parameters"]["additionalProperties"] is False
 
 
 def test_org_with_no_locations_gets_no_location_filter():
-    query_tool = next(t for t in build_tools([]) if t["name"] == "query_exceptions")
-    assert "location_ids" not in query_tool["input_schema"]["properties"]
+    query = next(t for t in build_tools([]) if t["name"] == "query_exceptions")
+    assert "location_ids" not in query["parameters"]["properties"]
+
+
+def test_config_builds_for_an_org_with_no_locations():
+    llm.build_config([])  # must not raise (an empty enum would be invalid)

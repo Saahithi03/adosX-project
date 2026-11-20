@@ -1,11 +1,13 @@
-"""Tool schemas offered to the model.
+"""Tool (function) schemas offered to the model.
 
 These guide the model; they don't make anything safe on their own. Whatever
 comes back is re-validated by IntentSerializer, which is the real guarantee.
 
-llm.py sends them with `strict: true`, so they stick to the JSON Schema subset
-strict mode supports: enums, `format: date`, `additionalProperties: false`,
-and no array or string length constraints.
+Provider-neutral: each tool is {name, description, parameters}, where
+`parameters` is plain JSON Schema. llm.py hands it to Gemini as
+`parameters_json_schema`. Kept to a conservative subset (enums, `format:
+date`, `additionalProperties: false`, no length constraints) so any
+function-calling API accepts it.
 """
 from recon.models import ReasonCode
 
@@ -52,7 +54,7 @@ def build_tools(locations: list[dict]) -> list[dict]:
                 "exceptions there are, which records they are, or the total size of the amount "
                 "differences, optionally filtered by reason, location or date."
             ),
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": properties,
                 "required": ["metric"],
@@ -62,7 +64,7 @@ def build_tools(locations: list[dict]) -> list[dict]:
         {
             "name": "cannot_answer",
             "description": "Use when the question can't be answered by query_exceptions.",
-            "input_schema": {
+            "parameters": {
                 "type": "object",
                 "properties": {
                     "reason_type": {"type": "string", "enum": MODEL_REASON_TYPES},

@@ -1,4 +1,4 @@
-"""/api/ask against the real model. Skipped unless ANTHROPIC_API_KEY is set.
+"""/api/ask against the real model (Gemini). Skipped unless GEMINI_API_KEY is set.
 
 Run just these with:  .venv/Scripts/python -m pytest -c backend/pytest.ini --rootdir backend -m live
 Each test makes one small API call.
@@ -12,7 +12,7 @@ from django.test import Client
 pytestmark = [
     pytest.mark.live,
     pytest.mark.django_db,
-    pytest.mark.skipif(not settings.ANTHROPIC_API_KEY, reason="ANTHROPIC_API_KEY not set"),
+    pytest.mark.skipif(not settings.GEMINI_API_KEY, reason="GEMINI_API_KEY not set"),
 ]
 
 
@@ -24,7 +24,11 @@ def ask(ingested, alice):
     def _ask(question):
         resp = client.post("/api/ask", data=json.dumps({"question": question}), content_type="application/json")
         assert resp.status_code == 200
-        return resp.json()
+        body = resp.json()
+        # An outage is itself a refusal, so without this check the refusal
+        # tests below would "pass" without ever reaching the model.
+        assert body.get("reason_code") != "LLM_UNAVAILABLE", "model not reached: check GEMINI_API_KEY"
+        return body
 
     return _ask
 
