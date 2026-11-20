@@ -1,5 +1,5 @@
 # DealerOS take-home. Targets are added as each build step lands.
-# Requires: GNU make, Docker (with compose v2), Python 3.12.
+# Requires: GNU make, Docker (with compose v2), Python 3.12, Node 18+.
 
 ifeq ($(OS),Windows_NT)
   PY_BOOT ?= py -3.12
@@ -12,19 +12,26 @@ endif
 PY     := $(VENV_BIN)/python
 MANAGE := $(PY) backend/manage.py
 
-.PHONY: setup venv db-up db-down db-reset migrate seed ingest api test rls-off rls-on check dbshell-app dbshell-owner
+.PHONY: setup venv web-deps db-up db-down db-reset migrate seed ingest dev api web test rls-off rls-on check dbshell-app dbshell-owner
 
-## setup: venv + deps, start Postgres, run migrations, seed demo users
-setup: venv db-up migrate seed
+## setup: Python + Node deps, start Postgres, run migrations, seed demo users
+setup: venv web-deps db-up migrate seed
 
 ## venv: create .venv and install backend requirements
 venv: .venv/.installed
 
-# Stamp file: re-installs only when requirements.txt changes.
+# Stamp files: re-install only when the dependency list changes.
 .venv/.installed: backend/requirements.txt
 	$(PY_BOOT) -m venv .venv
 	$(PY) -m pip install --upgrade pip
 	$(PY) -m pip install -r backend/requirements.txt
+	@echo ok > $@
+
+## web-deps: install frontend packages exactly as locked
+web-deps: frontend/node_modules/.installed
+
+frontend/node_modules/.installed: frontend/package-lock.json
+	cd frontend && npm ci --no-fund --no-audit
 	@echo ok > $@
 
 ## db-up: start Postgres and wait until it is healthy
@@ -67,9 +74,17 @@ rls-off:
 rls-on:
 	$(MANAGE) rls on
 
+## dev: API (:8000) and frontend (:5173) together. Open http://localhost:5173
+dev:
+	$(MAKE) -j2 api web
+
 ## api: Django dev server on :8000, connected as the app role
 api:
 	$(MANAGE) runserver 8000
+
+## web: Vite dev server on :5173, proxying /api to :8000
+web: web-deps
+	cd frontend && npm run dev
 
 ## check: Django system check (as the app role)
 check:
