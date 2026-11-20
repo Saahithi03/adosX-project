@@ -12,7 +12,7 @@ endif
 PY     := $(VENV_BIN)/python
 MANAGE := $(PY) backend/manage.py
 
-.PHONY: setup venv db-up db-down db-reset migrate seed api check dbshell-app dbshell-owner
+.PHONY: setup venv db-up db-down db-reset migrate seed api test rls-off rls-on check dbshell-app dbshell-owner
 
 ## setup: venv + deps, start Postgres, run migrations, seed demo users
 setup: venv db-up migrate seed
@@ -42,7 +42,7 @@ db-reset:
 
 # Owner-only targets. Target-specific `export` sets the variable in the
 # recipe's environment without relying on sh-style `VAR=x cmd` syntax.
-migrate seed: export DEALEROS_DB_ROLE = owner
+migrate seed rls-off rls-on: export DEALEROS_DB_ROLE = owner
 
 ## migrate: apply migrations as dealeros_owner (the table owner)
 migrate:
@@ -51,6 +51,17 @@ migrate:
 ## seed: create demo users alice (ORG-A) and bob (ORG-B)
 seed:
 	$(MANAGE) seed
+
+## test: run the test suite as dealeros_app (never the owner)
+test:
+	$(PY) -m pytest -c backend/pytest.ini --rootdir backend
+
+## rls-off / rls-on: isolation walkthrough. After rls-off, `make test` must FAIL.
+rls-off:
+	$(MANAGE) rls off
+
+rls-on:
+	$(MANAGE) rls on
 
 ## api: Django dev server on :8000, connected as the app role
 api:

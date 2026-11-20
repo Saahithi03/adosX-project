@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "rest_framework",
     "accounts",
+    "tenancy",
     "recon",
 ]
 

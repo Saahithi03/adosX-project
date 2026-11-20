@@ -21,6 +21,8 @@ def enable_rls_sql(table: str) -> str:
         ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;
         -- FORCE: the policy applies to the table owner too, not just dealeros_app.
         ALTER TABLE {table} FORCE ROW LEVEL SECURITY;
+        -- Drop first so `rls on` can be re-run safely after `rls off`.
+        DROP POLICY IF EXISTS org_isolation ON {table};
         CREATE POLICY org_isolation ON {table}
             USING (org_id = {_CURRENT_ORG})       -- which rows are visible
             WITH CHECK (org_id = {_CURRENT_ORG}); -- which rows may be written
