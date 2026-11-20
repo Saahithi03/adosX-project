@@ -4,9 +4,13 @@
 ifeq ($(OS),Windows_NT)
   PY_BOOT ?= py -3.12
   VENV_BIN := .venv/Scripts
+  # npm.cmd, not npm: the extensionless `npm` is a bash script, and with WSL
+  # installed `env bash` resolves to WSL's bash, which can't see C:\ paths.
+  NPM := npm.cmd
 else
   PY_BOOT ?= python3.12
   VENV_BIN := .venv/bin
+  NPM := npm
 endif
 
 PY     := $(VENV_BIN)/python
@@ -31,7 +35,7 @@ venv: .venv/.installed
 web-deps: frontend/node_modules/.installed
 
 frontend/node_modules/.installed: frontend/package-lock.json
-	cd frontend && npm ci --no-fund --no-audit
+	cd frontend && $(NPM) ci --no-fund --no-audit
 	@echo ok > $@
 
 ## db-up: start Postgres and wait until it is healthy
@@ -84,7 +88,7 @@ api:
 
 ## web: Vite dev server on :5173, proxying /api to :8000
 web: web-deps
-	cd frontend && npm run dev
+	cd frontend && $(NPM) run dev
 
 ## check: Django system check (as the app role)
 check:
