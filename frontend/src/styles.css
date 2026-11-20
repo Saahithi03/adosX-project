@@ -153,36 +153,6 @@ select {
 .answer p {
   margin: 0 0 8px;
 }
-.ask-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding: 10px 12px;
-  border: 1px dashed var(--line);
-  border-radius: 4px;
-  color: var(--muted);
-}
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--line);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  flex-shrink: 0;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2.4s;
-  }
-}
-
 /* Refusals look different on purpose: a warning, not an answer. */
 .refusal {
   border: 1px solid var(--warn-line);

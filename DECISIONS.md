@@ -66,6 +66,7 @@ Where a decision departs from the brief (CLAUDE.md), the entry says so.
 
 - **Vite proxies `/api` with `changeOrigin: false`** over Vite's string shorthand (which sets `changeOrigin: true`) or adding `CSRF_TRUSTED_ORIGINS`: keeping the browser's `Host` (`localhost:5173`) makes Django's CSRF Origin check pass with no exception in Django's config. The shorthand rewrote `Host` to `:8000` and every login failed (found in the browser).
 - **Rupee formatting works on the decimal string** over `Number(...)` + `Intl.NumberFormat`: a money value never passes through a float, even for display.
+- **MUI (`@mui/material` + Emotion) for one component: a full-page `Backdrop` with a `CircularProgress` while Ask is waiting** over the brief's "no UI library". A deliberate deviation, made at the product owner's request: a free-tier LLM call can take tens of seconds, and a page-level loader makes that wait obvious and stops clicks on a table that's about to change. It's imported per component (`@mui/material/Backdrop`) and used nowhere else, so the rest of the UI stays plain HTML + CSS; it adds about 32 KB gzipped.
 - **Clicking an evidence chip clears the filters if they hide that row** over highlighting nothing: the user always gets to see the record an answer cites.
 
 ## Data model

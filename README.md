@@ -94,7 +94,7 @@ keeping orgs apart.
   `org_id` / `sql` keys, bad codes and dates, explanations containing numbers.
   [test_ask_live.py](backend/tests/test_ask_live.py) runs 4 of them against the real model.
 
-**UI**: React + Vite + TypeScript, no UI library: login, header, Ask panel (answer +
+**UI**: React + Vite + TypeScript, plain HTML + CSS (MUI only for the full-page loader): login, header, Ask panel (answer +
 record-ID chips, refusals as a distinct warning), reason/location filters (server-side),
 and the table with amounts in ₹ (en-IN grouping, "—" when missing). Clicking a chip
 highlights its row.

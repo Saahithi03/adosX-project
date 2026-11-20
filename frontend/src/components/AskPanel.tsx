@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import Backdrop from "@mui/material/Backdrop";
+import CircularProgress from "@mui/material/CircularProgress";
 import { api } from "../api";
 import type { AskResult } from "../types";
 
@@ -46,12 +48,14 @@ export default function AskPanel({ onRecordClick }: Props) {
         </button>
       </form>
 
-      {busy && (
-        <div className="ask-loading" role="status" aria-live="polite">
-          <span className="spinner" aria-hidden="true" />
+      {/* Full-page loader: the backdrop covers the page (and blocks clicks)
+          until /api/ask responds. The free LLM tier can take several seconds. */}
+      <Backdrop open={busy} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.modal + 1, flexDirection: "column", gap: 2 }}>
+        <CircularProgress color="inherit" aria-label="Loading" />
+        <span role="status" aria-live="polite">
           Working out your answer…
-        </div>
-      )}
+        </span>
+      </Backdrop>
 
       {error && <p className="error">{error}</p>}
 
