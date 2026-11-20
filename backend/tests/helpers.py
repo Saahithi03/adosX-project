@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from pathlib import Path
 
 from django.db import connection
 from django.http import HttpResponse
@@ -6,6 +7,8 @@ from django.test import RequestFactory
 
 from tenancy.middleware import TenantMiddleware
 from tenancy.rls import ORG_SETTING
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
 def set_org(org_id):

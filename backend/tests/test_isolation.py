@@ -8,7 +8,6 @@ back on (`make rls-on`) and they pass.
 import json
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db import DatabaseError, connection, transaction
 from django.test import Client, RequestFactory
@@ -36,16 +35,6 @@ def two_orgs():
                 location=location,
                 reason_code=ReasonCode.AMOUNT_MISMATCH,
             )
-
-
-@pytest.fixture
-def alice():
-    return get_user_model().objects.create_user("t_alice", password="pw", org_id="ORG-A")
-
-
-@pytest.fixture
-def bob():
-    return get_user_model().objects.create_user("t_bob", password="pw", org_id="ORG-B")
 
 
 def orm_orgs():

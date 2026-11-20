@@ -7,16 +7,13 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from django.contrib.auth import get_user_model
 
 from recon.models import ReasonCode as R
 from recon.models import ReconException
 from recon.reconcile import EntryB, LocationRow, RecordA, reconcile, reconcile_dir
-from recon.store import replace_all
 
+from .helpers import DATA_DIR as DATA
 from .helpers import through_middleware
-
-DATA = Path(__file__).resolve().parents[2] / "data"
 
 D = Decimal
 # record, org, location, reason, A amount, B amount, B entry ids
@@ -161,14 +158,8 @@ def test_unknown_location_fails_loudly():
 
 # --- stored, then read back per org through RLS -------------------------------------
 
-@pytest.mark.django_db
-def test_stored_exceptions_are_scoped_per_org():
-    # Same write path as `make ingest`, inside this test's rolled-back transaction.
-    replace_all(*reconcile_dir(DATA))
-    User = get_user_model()
-    alice = User.objects.create_user("t_alice", password="pw", org_id="ORG-A")
-    bob = User.objects.create_user("t_bob", password="pw", org_id="ORG-B")
-
+def test_stored_exceptions_are_scoped_per_org(ingested, alice, bob):
+    # `ingested` uses the same write path as `make ingest`, rolled back after.
     def rows():
         return list(ReconException.objects.values_list("record_id", "location_id", "org_id"))
 

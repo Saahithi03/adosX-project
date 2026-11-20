@@ -33,6 +33,11 @@ Entries are added as the build steps land.
 - **Dates are not compared at all** over adding a ninth code (e.g. `DATE_MISMATCH`) for B entries booked outside the 3-day window: matching is by record ref, not date, and the brief defines no reason code for a date gap, so the window has nothing to enforce. The only gap in today's data is REC-1009 (B 2 days after A), which is within it either way. `event_date` (`recorded_on` for `MISSING_IN_SYSTEM_A`) is still stored as `record_date` for Ask's date filters. If a date rule is wanted later, it would be an independent check alongside `LOCATION_MISMATCH` in `reconcile()`, with its own code and label.
 - **Blank `actor_id` (REC-1050) not reported** over flagging it: it is an A-internal data gap, not a disagreement between the systems.
 
+## API
+
+- **Serializers are explicit allow-lists with no `org_id` or `b_location_id`** over `fields = "__all__"`: a new model field can never reach the API by accident, and REC-1077's ORG-B branch never reaches ORG-A.
+- **An unknown `reason` or `location` filter returns 400** over silently returning an empty list: a typo looks different from "nothing matches". The location check is itself RLS-scoped and the message doesn't echo the value, so another org's location gets exactly the same answer as a made-up one, and its existence isn't confirmed.
+
 ## Data model
 
 - **Raw System A / B rows are not stored**, only `locations` and `exceptions`, over loading both CSVs into tenant tables: the feature only needs the exceptions, and every extra tenant table is another place a policy could be missing. Trade-off: no per-record drill-down (already on the not-built list).

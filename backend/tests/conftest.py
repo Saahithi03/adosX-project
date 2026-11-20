@@ -16,6 +16,8 @@ from django.db import connection
 
 from tenancy.rls import TENANT_TABLES
 
+from .helpers import DATA_DIR
+
 
 @pytest.fixture(scope="session")
 def django_db_setup():
@@ -47,3 +49,29 @@ def _refuse_privileged_role(django_db_blocker):
             "Use DATABASE_URL_APP.",
             returncode=1,
         )
+
+
+# --- shared fixtures -----------------------------------------------------------
+
+@pytest.fixture
+def alice(db):
+    from django.contrib.auth import get_user_model
+
+    return get_user_model().objects.create_user("t_alice", password="pw", org_id="ORG-A")
+
+
+@pytest.fixture
+def bob(db):
+    from django.contrib.auth import get_user_model
+
+    return get_user_model().objects.create_user("t_bob", password="pw", org_id="ORG-B")
+
+
+@pytest.fixture
+def ingested(db):
+    """The real CSVs reconciled and stored, exactly as `make ingest` does,
+    inside this test's rolled-back transaction."""
+    from recon.reconcile import reconcile_dir
+    from recon.store import replace_all
+
+    replace_all(*reconcile_dir(DATA_DIR))
