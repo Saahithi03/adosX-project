@@ -96,6 +96,11 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
 
+# --- LLM (/api/ask) -------------------------------------------------------------
+# Empty or unset: /api/ask refuses with LLM_UNAVAILABLE; everything else works.
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+ASK_MODEL = env("ASK_MODEL", default="claude-sonnet-5-5")
+
 # --- i18n / time ------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
