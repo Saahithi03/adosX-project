@@ -1,0 +1,31 @@
+# Local Postgres 16 for DealerOS. SQLite is not an option: it has no RLS.
+#
+# The `postgres` superuser exists only so the init script can create the two
+# application roles. Neither Django nor the tests ever connect as it.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: dealeros
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Read by docker/postgres/init/01-roles.sh on first start only.
+      DEALEROS_OWNER_PASSWORD: ${DEALEROS_OWNER_PASSWORD:?set DEALEROS_OWNER_PASSWORD in .env}
+      DEALEROS_APP_PASSWORD: ${DEALEROS_APP_PASSWORD:?set DEALEROS_APP_PASSWORD in .env}
+    # 5433 on the host so we don't collide with a locally installed Postgres.
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 forces TCP. During first-time init the image runs a
+      # temporary server on the Unix socket only, so a socket check would
+      # report "ready" before the roles exist.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "dealeros"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:

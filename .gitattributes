@@ -1,0 +1,6 @@
+# The init script runs inside a Linux container and the Makefile needs tab
+# indentation; keep both LF even on Windows checkouts with autocrlf.
+* text=auto
+*.sh text eol=lf
+Makefile text eol=lf
+*.csv text eol=lf
