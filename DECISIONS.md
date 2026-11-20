@@ -22,6 +22,16 @@ Entries are added as the build steps land.
 - **Amounts finer than a paisa are rejected, not rounded** over quantizing them: comparison is exact to 0.01, so rounding could turn a real mismatch into a match.
 - **Blank amount parses to `None`, never `0`**: a blank must stay distinguishable so it can be reported as `AMOUNT_BLANK`.
 
+## Reconciliation (`recon/reconcile.py`)
+
+- **Compare A's total with the sum of all matching B entries** over one-to-one matching: split payments (REC-1055) are legitimate. Note REC-1055's first part is labelled "Entry for CAT-08", not "part 1 of 2", so the split is recognised by the sum, never by the labels.
+- **Org and location come from A (the master record); REC-1077 goes to ORG-A only, shown at LOC-102, with B's LOC-201 stored in `b_location_id` but never serialised** over showing the record to both orgs: that would leak one tenant's branch details to the other.
+- **`MISSING_IN_SYSTEM_A` takes the org of B's location** (REC-1999 → LOC-102 → ORG-A): there is no A row to take it from.
+- **Codes per record: `VOIDED_BUT_RECORDED` alone; otherwise at most one amount code (blank → duplicate → tax → mismatch) plus `LOCATION_MISMATCH` if the branch differs** over always reporting a single code: amount and branch are independent facts, so hiding one behind the other would under-report. In today's data no record has both.
+- **A VOIDED record with no B entry is not an exception** over flagging it: a cancelled sale with nothing in accounts is the correct state.
+- **`TAX_NOT_RECORDED` is only checked after the sum fails to match** over checking it first: a record with zero adjustment has base == total, and a correct single entry would otherwise be mislabelled.
+- **Blank `actor_id` (REC-1050) not reported** over flagging it: it is an A-internal data gap, not a disagreement between the systems.
+
 ## Data model
 
 - **Raw System A / B rows are not stored**, only `locations` and `exceptions`, over loading both CSVs into tenant tables: the feature only needs the exceptions, and every extra tenant table is another place a policy could be missing. Trade-off: no per-record drill-down (already on the not-built list).

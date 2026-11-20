@@ -12,7 +12,7 @@ endif
 PY     := $(VENV_BIN)/python
 MANAGE := $(PY) backend/manage.py
 
-.PHONY: setup venv db-up db-down db-reset migrate seed api test rls-off rls-on check dbshell-app dbshell-owner
+.PHONY: setup venv db-up db-down db-reset migrate seed ingest api test rls-off rls-on check dbshell-app dbshell-owner
 
 ## setup: venv + deps, start Postgres, run migrations, seed demo users
 setup: venv db-up migrate seed
@@ -42,7 +42,7 @@ db-reset:
 
 # Owner-only targets. Target-specific `export` sets the variable in the
 # recipe's environment without relying on sh-style `VAR=x cmd` syntax.
-migrate seed rls-off rls-on: export DEALEROS_DB_ROLE = owner
+migrate seed ingest rls-off rls-on: export DEALEROS_DB_ROLE = owner
 
 ## migrate: apply migrations as dealeros_owner (the table owner)
 migrate:
@@ -51,6 +51,10 @@ migrate:
 ## seed: create demo users alice (ORG-A) and bob (ORG-B)
 seed:
 	$(MANAGE) seed
+
+## ingest: reconcile data/*.csv and store exceptions (owner, one org at a time under RLS)
+ingest:
+	$(MANAGE) ingest
 
 ## test: run the test suite as dealeros_app (never the owner)
 test:

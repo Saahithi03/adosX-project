@@ -11,14 +11,12 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db import DatabaseError, connection, transaction
-from django.http import HttpResponse
 from django.test import Client, RequestFactory
 
 from recon.models import Location, ReasonCode, ReconException
-from tenancy.middleware import TenantMiddleware
 from tenancy.rls import TENANT_TABLES
 
-from .helpers import org_context, set_org
+from .helpers import org_context, through_middleware
 
 pytestmark = pytest.mark.django_db
 
@@ -48,24 +46,6 @@ def alice():
 @pytest.fixture
 def bob():
     return get_user_model().objects.create_user("t_bob", password="pw", org_id="ORG-B")
-
-
-def through_middleware(user, query, request=None):
-    """Run `query()` as if it were a view, behind the real TenantMiddleware."""
-    request = request or RequestFactory().get("/probe")
-    request.user = user
-    captured = {}
-
-    def view(req):
-        captured["result"] = query()
-        return HttpResponse()
-
-    TenantMiddleware(view)(request)
-    # In production the org vanishes when the middleware's transaction ends.
-    # Here that "transaction" is a savepoint inside the test's transaction, so
-    # SET LOCAL would survive it; clear it so later assertions start unset.
-    set_org("")
-    return captured["result"]
 
 
 def orm_orgs():
