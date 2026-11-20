@@ -30,6 +30,7 @@ Entries are added as the build steps land.
 - **Codes per record: `VOIDED_BUT_RECORDED` alone; otherwise at most one amount code (blank → duplicate → tax → mismatch) plus `LOCATION_MISMATCH` if the branch differs** over always reporting a single code: amount and branch are independent facts, so hiding one behind the other would under-report. In today's data no record has both.
 - **A VOIDED record with no B entry is not an exception** over flagging it: a cancelled sale with nothing in accounts is the correct state.
 - **`TAX_NOT_RECORDED` is only checked after the sum fails to match** over checking it first: a record with zero adjustment has base == total, and a correct single entry would otherwise be mislabelled.
+- **Dates are not compared at all** over adding a ninth code (e.g. `DATE_MISMATCH`) for B entries booked outside the 3-day window: matching is by record ref, not date, and the brief defines no reason code for a date gap, so the window has nothing to enforce. The only gap in today's data is REC-1009 (B 2 days after A), which is within it either way. `event_date` (`recorded_on` for `MISSING_IN_SYSTEM_A`) is still stored as `record_date` for Ask's date filters. If a date rule is wanted later, it would be an independent check alongside `LOCATION_MISMATCH` in `reconcile()`, with its own code and label.
 - **Blank `actor_id` (REC-1050) not reported** over flagging it: it is an A-internal data gap, not a disagreement between the systems.
 
 ## Data model

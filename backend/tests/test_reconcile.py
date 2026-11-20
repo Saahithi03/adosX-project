@@ -137,6 +137,13 @@ def test_same_value_on_different_days_is_not_a_duplicate():
     assert codes([a_rec()], pair) == []
 
 
+@pytest.mark.parametrize("days", [-5, 2, 3, 30])
+def test_booking_date_lag_is_never_an_exception(days):
+    # Dates aren't compared (DECISIONS.md): only ref, amount and branch matter.
+    late = b_ent(1, on=date.fromordinal(DAY.toordinal() + days))
+    assert codes([a_rec()], [late]) == []
+
+
 def test_one_paisa_off_is_a_mismatch():
     assert codes([a_rec()], [b_ent(1, value="127.99")]) == [R.AMOUNT_MISMATCH]
 

@@ -14,6 +14,10 @@ Which codes a record can get:
   order of `_amount_code`), plus LOCATION_MISMATCH if the branch differs.
   Amount and branch are independent facts, so both are reported if both
   are wrong.
+
+Dates are deliberately not compared. `recorded_on` is B's booking date, not
+the sale date, and the brief has no reason code for a date gap, so REC-1009
+(booked 2 days later) and any other lag are not exceptions (DECISIONS.md).
 """
 import csv
 from collections import defaultdict
