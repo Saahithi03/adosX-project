@@ -33,7 +33,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # TenantMiddleware is added here in step 3, after AuthenticationMiddleware.
+    # Must follow AuthenticationMiddleware: it reads request.user.org_id.
+    "tenancy.middleware.TenantMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

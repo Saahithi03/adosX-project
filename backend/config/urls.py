@@ -1,3 +1,5 @@
-"""URL routes. API endpoints are added from step 3 onwards."""
+from django.urls import include, path
 
-urlpatterns = []
+urlpatterns = [
+    path("api/", include("accounts.urls")),
+]

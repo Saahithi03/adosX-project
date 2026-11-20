@@ -12,10 +12,10 @@ endif
 PY     := $(VENV_BIN)/python
 MANAGE := $(PY) backend/manage.py
 
-.PHONY: setup venv db-up db-down db-reset migrate check dbshell-app dbshell-owner
+.PHONY: setup venv db-up db-down db-reset migrate seed api check dbshell-app dbshell-owner
 
-## setup: venv + deps, start Postgres, run migrations
-setup: venv db-up migrate
+## setup: venv + deps, start Postgres, run migrations, seed demo users
+setup: venv db-up migrate seed
 
 ## venv: create .venv and install backend requirements
 venv: .venv/.installed
@@ -42,11 +42,19 @@ db-reset:
 
 # Owner-only targets. Target-specific `export` sets the variable in the
 # recipe's environment without relying on sh-style `VAR=x cmd` syntax.
-migrate: export DEALEROS_DB_ROLE = owner
+migrate seed: export DEALEROS_DB_ROLE = owner
 
 ## migrate: apply migrations as dealeros_owner (the table owner)
 migrate:
 	$(MANAGE) migrate
+
+## seed: create demo users alice (ORG-A) and bob (ORG-B)
+seed:
+	$(MANAGE) seed
+
+## api: Django dev server on :8000, connected as the app role
+api:
+	$(MANAGE) runserver 8000
 
 ## check: Django system check (as the app role)
 check:
