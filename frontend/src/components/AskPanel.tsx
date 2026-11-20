@@ -20,6 +20,7 @@ export default function AskPanel({ onRecordClick }: Props) {
     if (!question.trim()) return;
     setBusy(true);
     setError(null);
+    setResult(null); // the loader replaces the previous answer while we wait
     try {
       setResult(await api.ask(question));
     } catch (err) {
@@ -44,6 +45,13 @@ export default function AskPanel({ onRecordClick }: Props) {
           {busy ? "Asking…" : "Ask"}
         </button>
       </form>
+
+      {busy && (
+        <div className="ask-loading" role="status" aria-live="polite">
+          <span className="spinner" aria-hidden="true" />
+          Working out your answer…
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
 
