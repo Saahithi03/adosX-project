@@ -38,6 +38,16 @@ Entries are added as the build steps land.
 - **Serializers are explicit allow-lists with no `org_id` or `b_location_id`** over `fields = "__all__"`: a new model field can never reach the API by accident, and REC-1077's ORG-B branch never reaches ORG-A.
 - **An unknown `reason` or `location` filter returns 400** over silently returning an empty list: a typo looks different from "nothing matches". The location check is itself RLS-scoped and the message doesn't echo the value, so another org's location gets exactly the same answer as a made-up one, and its existence isn't confirmed.
 
+## Grounded Q&A (`/api/ask`)
+
+- **The LLM only parses the question into a tool call; Django validates it and computes every number** over text-to-SQL (a valid query can still be the wrong query, which is a confident lie with citations) and over putting rows in the prompt (the model would do the counting, and can miscount).
+- **`IntentSerializer` re-validates every tool call** over trusting the API's schema enforcement: the schema guides the model, the serializer guarantees safety. Unknown keys (`org_id`, `sql`) → `OUT_OF_SCOPE`; unknown reason or another org's location → `UNKNOWN_FILTER`; bad or reversed dates → `AMBIGUOUS`; sum_gap on a code with no gap → `DATA_NOT_AVAILABLE`.
+- **Refusal text is ours; the model's `explanation` is discarded** over displaying it: no number can originate from the model. Refusal messages contain no digits and never echo a filter value (tested).
+- **Location enum built per request from the RLS-scoped `locations` table** over a static list: the model is never even offered another org's location IDs.
+- **`sum_gap` = sum of |A − accounts| per exception, a missing accounts entry counting as 0** over a signed sum: a signed total lets an over-recording (the REC-1042 duplicate) cancel out an under-recording and report a misleadingly small gap. Rows where the difference isn't meaningful are left out and named in the answer: `MISSING_IN_SYSTEM_A` (no A amount), `AMOUNT_BLANK` (accounts amount unknown, not zero), `VOIDED_BUT_RECORDED` (the sale was cancelled, so A's total isn't what accounts should hold). Asking for sum_gap on those codes explicitly is refused.
+- **Refusals return HTTP 200 with `answered: false`** over a 4xx: declining to answer is a valid outcome, not a client error, and the UI handles both shapes the same way.
+- **Counts are exceptions (rows); evidence is distinct record IDs** over counting records: matches the table the user sees.
+
 ## Data model
 
 - **Raw System A / B rows are not stored**, only `locations` and `exceptions`, over loading both CSVs into tenant tables: the feature only needs the exceptions, and every extra tenant table is another place a policy could be missing. Trade-off: no per-record drill-down (already on the not-built list).
