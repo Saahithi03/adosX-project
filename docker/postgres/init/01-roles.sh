@@ -14,8 +14,8 @@ psql -v ON_ERROR_STOP=1 \
      -v owner_pw="$DEALEROS_OWNER_PASSWORD" \
      -v app_pw="$DEALEROS_APP_PASSWORD" <<'SQL'
 -- Both roles are explicitly stripped of every attribute that skips RLS.
--- NOBYPASSRLS on the owner is least-privilege for now. How ingest writes
--- rows for every org under FORCE RLS is decided in step 2 (DECISIONS.md).
+-- The owner is NOBYPASSRLS too: with FORCE RLS, ingest writes one org at a
+-- time under SET LOCAL app.current_org (see DECISIONS.md).
 CREATE ROLE dealeros_owner LOGIN PASSWORD :'owner_pw'
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE dealeros_app LOGIN PASSWORD :'app_pw'
