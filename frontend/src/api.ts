@@ -3,7 +3,7 @@
 //
 // The client never sends an org. The server takes it from the logged-in user.
 
-import type { ExceptionItem, LocationOption, Me, ReasonOption } from "./types";
+import type { AskResult, ExceptionItem, LocationOption, Me, ReasonOption } from "./types";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -54,6 +54,8 @@ export const api = {
   },
   login: (username: string, password: string) => request<Me>("POST", "/api/login", { username, password }),
   logout: () => request<void>("POST", "/api/logout"),
+  /** Body is the question only. A refusal is a normal 200 response. */
+  ask: (question: string) => request<AskResult>("POST", "/api/ask", { question }),
   reasons: () => request<ReasonOption[]>("GET", "/api/reasons"),
   locations: () => request<LocationOption[]>("GET", "/api/locations"),
   exceptions(filters: { reason: string; location: string }) {

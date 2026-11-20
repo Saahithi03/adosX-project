@@ -7,6 +7,10 @@
   --bg-soft: #f5f7f9;
   --accent: #1f5fbf;
   --error: #b42318;
+  --highlight: #fff4c2;
+  --warn-bg: #fff8e6;
+  --warn-line: #f0c36d;
+  --warn-text: #7a4b00;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -120,6 +124,65 @@ select {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.exceptions tr.highlight td {
+  background: var(--highlight);
+}
+
+/* --- ask --- */
+.ask {
+  margin: 8px 0 20px;
+}
+.ask form {
+  display: flex;
+  gap: 8px;
+}
+.ask input {
+  flex: 1;
+  min-width: 0;
+}
+.answer,
+.refusal {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+}
+.answer {
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+.answer p {
+  margin: 0 0 8px;
+}
+/* Refusals look different on purpose: a warning, not an answer. */
+.refusal {
+  border: 1px solid var(--warn-line);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.chips.muted {
+  margin-top: 6px;
+  color: var(--muted);
+}
+.chip {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+}
+.chips.muted .chip {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
 .mono {
   font-family: ui-monospace, Consolas, monospace;
 }

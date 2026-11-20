@@ -1,7 +1,12 @@
 import { formatINR } from "../format";
 import type { ExceptionItem } from "../types";
 
-export default function ExceptionsTable({ items }: { items: ExceptionItem[] }) {
+interface Props {
+  items: ExceptionItem[];
+  highlighted?: string | null; // record ID picked from an Ask answer
+}
+
+export default function ExceptionsTable({ items, highlighted = null }: Props) {
   if (items.length === 0) return <p className="empty">No exceptions match these filters.</p>;
 
   return (
@@ -17,8 +22,12 @@ export default function ExceptionsTable({ items }: { items: ExceptionItem[] }) {
       </thead>
       <tbody>
         {items.map((x) => (
-          // data-record lets the Ask panel (step 11) find and highlight a row.
-          <tr key={`${x.record_id}-${x.reason_code}`} data-record={x.record_id}>
+          // data-record lets the Dashboard scroll an Ask chip's row into view.
+          <tr
+            key={`${x.record_id}-${x.reason_code}`}
+            data-record={x.record_id}
+            className={x.record_id === highlighted ? "highlight" : undefined}
+          >
             <td className="mono">{x.record_id}</td>
             <td>{x.location_name}</td>
             <td title={x.reason_code}>{x.reason_label}</td>

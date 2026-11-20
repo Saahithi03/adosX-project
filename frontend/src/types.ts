@@ -25,3 +25,20 @@ export interface ReasonOption {
   code: string;
   label: string;
 }
+
+// POST /api/ask returns one of these two shapes (CLAUDE.md §8).
+export interface AskAnswered {
+  answered: true;
+  answer: string; // built by the server from a template, never by the model
+  value: number | string | Record<string, number | string>;
+  evidence: string[]; // record IDs every number was computed from
+  excluded?: string[]; // sum_gap only: records left out, named in the answer
+}
+
+export interface AskRefused {
+  answered: false;
+  reason_code: string;
+  reason: string; // one of the server's fixed messages; contains no numbers
+}
+
+export type AskResult = AskAnswered | AskRefused;
