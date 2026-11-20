@@ -16,6 +16,12 @@ Entries are added as the build steps land.
 - **Tests run against the existing, migrated `dealeros` database as `dealeros_app`, each test rolled back** over letting pytest-django create a `test_dealeros` database: creating databases would need `CREATEDB` (more privilege), and the tests must connect as the app role anyway. A session guard aborts the run if the connection is a superuser, has `BYPASSRLS`, or owns a tenant table. Test rows use `LOC-T*` / `REC-T*` / `t_*` IDs so they never collide with ingested data.
 - **`manage.py rls off|on` (as owner) for the walkthrough** over rolling back the RLS migration: the rollback would also drop the same-org composite FK, and would leave migration history out of step. The command reuses the exact SQL from `tenancy/rls.py`, so "on" restores precisely what the migration created.
 
+## Parsing (`recon/normalise.py`)
+
+- **Unparseable refs and amounts raise `ValueError` and stop ingest** over skipping the row or guessing: a silently dropped row could hide a real disagreement. Today's data has none (every B ref normalises, every non-blank amount parses), and a test checks that across the whole of `system_b.csv`.
+- **Amounts finer than a paisa are rejected, not rounded** over quantizing them: comparison is exact to 0.01, so rounding could turn a real mismatch into a match.
+- **Blank amount parses to `None`, never `0`**: a blank must stay distinguishable so it can be reported as `AMOUNT_BLANK`.
+
 ## Data model
 
 - **Raw System A / B rows are not stored**, only `locations` and `exceptions`, over loading both CSVs into tenant tables: the feature only needs the exceptions, and every extra tenant table is another place a policy could be missing. Trade-off: no per-record drill-down (already on the not-built list).
