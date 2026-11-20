@@ -1,7 +1,7 @@
 # Decisions
 
 Each entry: **decision**, the rejected alternative, and the one-line reason.
-Entries are added as the build steps land.
+Where a decision departs from the brief (CLAUDE.md), the entry says so.
 
 ## Tenant isolation
 
@@ -10,6 +10,14 @@ Entries are added as the build steps land.
 - **Ingest runs as `dealeros_owner` but writes one org at a time under `SET LOCAL app.current_org`** over giving the owner `BYPASSRLS`: FORCE RLS stays meaningful for every role, and the policy's `WITH CHECK` verifies that each row ingest writes lands in the org it claims. The brief described ingest as "bypassing RLS on purpose"; this was changed deliberately (step 2).
 - **Policy compares against `NULLIF(current_setting('app.current_org', true), '')`** over the bare `current_setting(...)`: after a `SET LOCAL` ends, Postgres leaves the setting as `''` rather than NULL on that connection. Both fail closed today (no org is `''`), but NULLIF makes "unset means no rows" explicit instead of incidental.
 - **Composite FK `exceptions(location_id, org_id) → locations(location_id, org_id)`** over relying on ingest code alone: an exception physically cannot point at another org's location, even if reconciliation code has a bug. FK checks bypass RLS by design, so the constraint works across the policy.
+
+## Request flow and auth
+
+- **`SET LOCAL` (`set_config(..., true)`) inside a middleware-owned `transaction.atomic()`** over a session-level `SET`: a session setting survives on the connection, so a pooled or reused connection would carry one tenant's org into the next request. A local setting ends with the transaction. (Tested by hand: after a request, the same connection sees `''`, and the policy treats that as no org.)
+- **The org comes only from `request.user.org_id`** over accepting it from the client: an `org_id` in the body, query string or a header is ignored (tested for each).
+- **Django session auth (DRF `SessionAuthentication`)** over DRF token or JWT auth: those authenticate inside the DRF view, after middleware has run, so `TenantMiddleware` would see an anonymous user and set no org.
+- **Login checks CSRF explicitly** over DRF's default: DRF only enforces CSRF for already-authenticated session users, so an anonymous login POST would skip it and allow login CSRF.
+- **5xx responses roll the request's transaction back** over committing: Django turns a view exception into a 500 response before it reaches the middleware, so `atomic()` alone would commit half-done writes.
 
 ## Testing isolation
 
@@ -53,6 +61,12 @@ Entries are added as the build steps land.
 - **Retry 429/503/504 up to 3 attempts (1 s → 8 s backoff), then `LLM_UNAVAILABLE`**: free-tier overload is usually seconds long. Any other failure (no key, bad key, quota, network) is `LLM_UNAVAILABLE` immediately: the table and filters don't depend on the LLM and keep working.
 - **Live tests fail, not pass, when the model is unreachable**: `LLM_UNAVAILABLE` is itself a refusal, so without an explicit check the refusal tests passed against a 401 without ever reaching a model (this happened).
 - **Counts are exceptions (rows); evidence is distinct record IDs** over counting records: matches the table the user sees.
+
+## Frontend
+
+- **Vite proxies `/api` with `changeOrigin: false`** over Vite's string shorthand (which sets `changeOrigin: true`) or adding `CSRF_TRUSTED_ORIGINS`: keeping the browser's `Host` (`localhost:5173`) makes Django's CSRF Origin check pass with no exception in Django's config. The shorthand rewrote `Host` to `:8000` and every login failed (found in the browser).
+- **Rupee formatting works on the decimal string** over `Number(...)` + `Intl.NumberFormat`: a money value never passes through a float, even for display.
+- **Clicking an evidence chip clears the filters if they hide that row** over highlighting nothing: the user always gets to see the record an answer cites.
 
 ## Data model
 
