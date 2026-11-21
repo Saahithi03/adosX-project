@@ -7,6 +7,8 @@
   --bg-soft: #f5f7f9;
   --accent: #1f5fbf;
   --error: #b42318;
+  --danger: #d92d20;
+  --danger-hover: #b42318;
   --highlight: #fff4c2;
   --warn-bg: #fff8e6;
   --warn-line: #f0c36d;
@@ -39,6 +41,15 @@ button {
 button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+/* Red button for clearing actions (e.g. Clear next to Ask). */
+button.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+button.danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }
 
 input,

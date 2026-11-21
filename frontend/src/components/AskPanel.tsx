@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
 import { api } from "../api";
@@ -16,6 +16,13 @@ export default function AskPanel({ onRecordClick }: Props) {
   const [result, setResult] = useState<AskResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Empties the question box only; the last answer stays on screen.
+  function clearQuestion() {
+    setQuestion("");
+    inputRef.current?.focus(); // ready to type the next question
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -37,6 +44,7 @@ export default function AskPanel({ onRecordClick }: Props) {
     <section className="ask">
       <form onSubmit={submit}>
         <input
+          ref={inputRef}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask about your exceptions, e.g. “How many at Location 103?”"
@@ -44,13 +52,29 @@ export default function AskPanel({ onRecordClick }: Props) {
           aria-label="Question"
         />
         <button type="submit" disabled={busy || !question.trim()}>
-          {busy ? "Asking…" : "Ask"}
+          Ask
+        </button>
+        <button
+          type="button"
+          className="danger"
+          onClick={clearQuestion}
+          disabled={busy || question === ""}
+        >
+          Clear
         </button>
       </form>
 
       {/* Full-page loader: the backdrop covers the page (and blocks clicks)
           until /api/ask responds. The free LLM tier can take several seconds. */}
-      <Backdrop open={busy} sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.modal + 1, flexDirection: "column", gap: 2 }}>
+      <Backdrop
+        open={busy}
+        sx={{
+          color: "#fff",
+          zIndex: (theme) => theme.zIndex.modal + 1,
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
         <CircularProgress color="inherit" aria-label="Loading" />
         <span role="status" aria-live="polite">
           Working out your answer…
@@ -65,17 +89,31 @@ export default function AskPanel({ onRecordClick }: Props) {
           {result.evidence.length > 0 && (
             <div className="chips" aria-label="Records this answer is based on">
               {result.evidence.map((id) => (
-                <button key={id} type="button" className="chip" onClick={() => onRecordClick(id)} title="Show in table">
+                <button
+                  key={id}
+                  type="button"
+                  className="chip"
+                  onClick={() => onRecordClick(id)}
+                  title="Show in table"
+                >
                   {id}
                 </button>
               ))}
             </div>
           )}
           {result.excluded && result.excluded.length > 0 && (
-            <div className="chips muted" aria-label="Records left out of the total">
+            <div
+              className="chips muted"
+              aria-label="Records left out of the total"
+            >
               <span>Not included:</span>
               {result.excluded.map((id) => (
-                <button key={id} type="button" className="chip" onClick={() => onRecordClick(id)}>
+                <button
+                  key={id}
+                  type="button"
+                  className="chip"
+                  onClick={() => onRecordClick(id)}
+                >
                   {id}
                 </button>
               ))}
