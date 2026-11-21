@@ -194,6 +194,27 @@ select {
   color: var(--muted);
 }
 
+/* Missing amounts: a labelled pill instead of "—", styled by meaning. */
+.missing {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  border: 1px solid;
+}
+/* Nothing exists on that side (no entry / no sale record). */
+.missing-none {
+  color: var(--muted);
+  border-color: var(--line);
+  background: var(--bg-soft);
+}
+/* Something exists but its amount is empty. */
+.missing-blank {
+  color: var(--warn-text);
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+}
+
 .mono {
   font-family: ui-monospace, Consolas, monospace;
 }
